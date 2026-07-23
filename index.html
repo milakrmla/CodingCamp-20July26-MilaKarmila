@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense & Budget Visualizer</title>
+  <link rel="shortcut icon" href="img/wallet-solid.png" type="image/x-icon">
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="header-logo">
+        <div class="logo-icon"><i class="fa-solid fa-wallet"></i></div>
+        <h1>Budget<span>Tracker</span></h1>
+      </div>
+      <div class="theme-switch-wrap">
+        <span id="theme-label" class="theme-label">Light</span>
+        <button id="theme-toggle" class="theme-switch" role="switch" aria-checked="false" aria-label="Toggle dark/light mode">
+          <span class="theme-switch-thumb">
+            <span id="theme-icon" class="theme-switch-icon"><i class="fa-solid fa-sun"></i></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Balance Card -->
+    <section class="balance-card" aria-label="Total Balance">
+      <p class="balance-label">Total Balance</p>
+      <div class="balance-amount" id="total-balance">No spending yet</div>
+      <div class="balance-meta">
+        <span><i class="fa-solid fa-chart-simple"></i> <span id="tx-count">0</span> transactions</span>
+        <span><i class="fa-regular fa-calendar"></i> <span id="tx-month">this month</span></span>
+      </div>
+      <!-- Category dots -->
+      <div id="cat-dots" class="cat-dots"></div>
+      <!-- Spending limit progress bar -->
+      <div id="limit-progress-wrap" class="limit-progress-wrap hidden">
+        <div class="limit-progress-labels">
+          <span>Spending</span>
+          <span id="limit-progress-text"></span>
+        </div>
+        <div class="limit-progress-track">
+          <div id="limit-progress-bar" class="limit-progress-bar"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Limit Banner -->
+    <div id="limit-banner" class="limit-banner hidden" role="alert">
+      <i class="fa-solid fa-triangle-exclamation"></i> Total spending exceeded your limit of <strong id="limit-display"></strong>!
+    </div>
+
+    <!-- Add Transaction -->
+    <section class="card" aria-label="Add Transaction">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="icon"><i class="fa-solid fa-plus"></i></div>
+          Add Transaction
+        </div>
+      </div>
+      <form id="transaction-form" novalidate>
+        <div class="form-group">
+          <label for="item-name">Item Name</label>
+          <input type="text" id="item-name" placeholder="e.g. Lunch, Bus fare…" maxlength="60" autocomplete="off" />
+          <span class="error-msg" id="err-name"></span>
+        </div>
+        <div class="form-group">
+          <label for="amount">Amount (Rp)</label>
+          <input type="number" id="amount" placeholder="e.g. 15000" min="1" />
+          <span class="error-msg" id="err-amount"></span>
+        </div>
+        <div class="form-group">
+          <label for="category">Category</label>
+          <div class="category-row">
+            <div class="custom-select-wrap" id="category-select-wrap">
+              <button type="button" class="custom-select-trigger" id="category-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span id="category-trigger-text">— Select category —</span>
+                <i class="fa-solid fa-chevron-down custom-select-arrow"></i>
+              </button>
+              <ul class="custom-select-list" id="category-list" role="listbox" aria-label="Category"></ul>
+              <input type="hidden" id="category" name="category" />
+            </div>
+            <button type="button" class="btn-icon" id="add-category-btn" title="Manage categories" aria-label="Manage categories"><i class="fa-solid fa-tag"></i></button>
+          </div>
+          <span class="error-msg" id="err-category"></span>
+        </div>
+        <button type="submit" class="btn-primary" id="submit-btn"><i class="fa-solid fa-plus"></i> Add Transaction</button>
+      </form>
+    </section>
+
+    <!-- Spending Limit -->
+    <section class="card" aria-label="Spending Limit">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="icon"><i class="fa-solid fa-bullseye"></i></div>
+          Spending Limit
+        </div>
+      </div>
+      <p class="setting-desc">Set a global limit. Any transaction above this amount will be highlighted in orange.</p>
+      <div class="limit-setting-row">
+        <input type="number" id="spending-limit" placeholder="e.g. 200000" min="1" aria-label="Spending limit amount" />
+        <button id="save-limit-btn" class="btn-primary btn-save-limit">Save</button>
+      </div>
+      <p id="limit-current" class="limit-current hidden"><i class="fa-solid fa-circle-check"></i> Active limit: <span id="limit-val"></span></p>
+    </section>
+
+    <!-- Sort & Filter -->
+    <section class="card controls-card" aria-label="Sort and filter">
+      <div class="card-header" style="margin-bottom:0.75rem">
+        <div class="card-title">
+          <div class="icon"><i class="fa-solid fa-sliders"></i></div>
+          Sort &amp; Filter
+        </div>
+      </div>
+      <!-- Search -->
+      <div class="search-wrap">
+        <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+        <input type="text" id="search-input" placeholder="Search transactions…" autocomplete="off" aria-label="Search transactions" />
+      </div>
+      <div class="controls-grid">
+        <div class="control-group">
+          <label for="sort-select">Sort by</label>
+          <select id="sort-select">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="amount-high">Amount ↓</option>
+            <option value="amount-low">Amount ↑</option>
+            <option value="category">Category A–Z</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="filter-select">Category</label>
+          <select id="filter-select">
+            <option value="all">All</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Transaction List -->
+    <section class="card" aria-label="Transaction List">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="icon"><i class="fa-solid fa-list"></i></div>
+          Transactions
+        </div>
+        <span id="list-count" style="font-size:0.78rem;color:var(--text-3);font-weight:600;"></span>
+      </div>
+      <div id="transaction-list" class="transaction-list">
+        <div class="empty-state" id="empty-state">
+          <span class="empty-icon"><i class="fa-solid fa-receipt"></i></span>
+          No transactions yet. Add one above!
+        </div>
+      </div>
+    </section>
+
+    <!-- Monthly Summary -->
+    <section class="card" aria-label="Monthly Summary">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="icon"><i class="fa-regular fa-calendar-days"></i></div>
+          Monthly Summary
+        </div>
+      </div>
+      <div id="monthly-summary" class="monthly-summary">
+        <div class="empty-state"><span class="empty-icon"><i class="fa-regular fa-calendar-xmark"></i></span>No data yet.</div>
+      </div>
+    </section>
+
+    <!-- Chart -->
+    <section class="card" aria-label="Spending Chart">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="icon"><i class="fa-solid fa-chart-pie"></i></div>
+          Spending by Category
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="expense-chart" aria-label="Pie chart of spending by category" role="img"></canvas>
+      </div>
+      <div class="empty-state" id="chart-empty"><span class="empty-icon"><i class="fa-solid fa-chart-pie"></i></span>No data to display.</div>
+    </section>
+
+  </main>
+
+  <!-- Toast Container -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- Manage Categories Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal modal-wide">
+      <h3 class="modal-title" id="modal-title"><i class="fa-solid fa-tags"></i> Manage Categories</h3>
+
+      <!-- Add new -->
+      <div class="cat-add-row">
+        <input type="text" id="custom-category-input" placeholder="New category name…" maxlength="30" autocomplete="off" />
+        <button id="modal-confirm" class="btn-primary btn-add-cat"><i class="fa-solid fa-plus"></i> Add</button>
+      </div>
+      <span class="error-msg" id="err-custom-cat"></span>
+
+      <!-- List of custom categories -->
+      <div id="cat-manage-list" class="cat-manage-list"></div>
+
+      <div class="modal-actions" style="margin-top:1rem">
+        <button id="modal-cancel" class="btn-secondary" style="width:100%">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Transaction Modal -->
+  <div id="edit-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <div class="modal">
+      <h3 class="modal-title" id="edit-modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Transaction</h3>
+      <input type="hidden" id="edit-id" />
+      <div class="form-group">
+        <label for="edit-name">Item Name</label>
+        <input type="text" id="edit-name" maxlength="60" autocomplete="off" />
+        <span class="error-msg" id="err-edit-name"></span>
+      </div>
+      <div class="form-group">
+        <label for="edit-amount">Amount (Rp)</label>
+        <input type="number" id="edit-amount" min="1" />
+        <span class="error-msg" id="err-edit-amount"></span>
+      </div>
+      <div class="form-group">
+          <label>Category</label>
+          <div class="custom-select-wrap" id="edit-category-select-wrap">
+            <button type="button" class="custom-select-trigger" id="edit-category-trigger" aria-haspopup="listbox" aria-expanded="false">
+              <span id="edit-category-trigger-text">— Select category —</span>
+              <i class="fa-solid fa-chevron-down custom-select-arrow"></i>
+            </button>
+            <ul class="custom-select-list" id="edit-category-list" role="listbox" aria-label="Category"></ul>
+            <input type="hidden" id="edit-category" />
+          </div>
+          <span class="error-msg" id="err-edit-category"></span>
+        </div>
+      <div class="modal-actions">
+        <button id="edit-modal-confirm" class="btn-primary">Save Changes</button>
+        <button id="edit-modal-cancel" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
